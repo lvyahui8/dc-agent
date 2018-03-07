@@ -8,10 +8,18 @@
 #include <thrift/transport/TServerSocket.h>
 #include <thrift/transport/TBufferTransports.h>
 
+#include <concurrency/ThreadManager.h>
+#include <concurrency/PosixThreadFactory.h>
+
+#include <server/TThreadPoolServer.h>
+#include <server/TThreadedServer.h>
+
+
 using namespace ::apache::thrift;
 using namespace ::apache::thrift::protocol;
 using namespace ::apache::thrift::transport;
 using namespace ::apache::thrift::server;
+using namespace ::apache::thrift::concurrency;
 
 using boost::shared_ptr;
 
@@ -50,7 +58,14 @@ int main(int argc, char **argv) {
   shared_ptr<TTransportFactory> transportFactory(new TBufferedTransportFactory());
   shared_ptr<TProtocolFactory> protocolFactory(new TBinaryProtocolFactory());
 
-  TSimpleServer server(processor, serverTransport, transportFactory, protocolFactory);
+   shared_ptr<ThreadManager> threadManager = ThreadManager::newSimpleThreadManager(15);
+   shared_ptr<PosixThreadFactory> threadFactory 
+	       = shared_ptr<PosixThreadFactory>(new PosixThreadFactory());
+
+   threadManager->threadFactory(threadFactory);
+  threadManager->start(); 
+  TThreadPoolServer server(processor,serverTransport,transportFactory,protocolFactory,threadManager);
+
   server.serve();
   return 0;
 }
